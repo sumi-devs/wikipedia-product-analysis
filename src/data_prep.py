@@ -30,3 +30,20 @@ def add_time_features(df):
     df["year"] = df["timestamp"].dt.year
     df["is_weekend"] = df["timestamp"].dt.dayofweek >= 5
     return df
+
+def clean_reddit_data(df):
+    """basic cleaning for reddit data"""
+    if df is None or df.empty:
+        return df
+    df = df.copy()
+    if 'date' in df.columns:
+        df['date'] = pd.to_datetime(df['date'])
+    return df
+
+def add_pre_post_chatgpt(df, date_col="timestamp"):
+    """Tags rows as pre-ChatGPT or post-ChatGPT based on Nov 30, 2022."""
+    df = df.copy()
+    chatgpt_launch = pd.Timestamp("2022-11-30")
+    if date_col in df.columns:
+        df["period"] = df[date_col].apply(lambda x: "post-ChatGPT" if pd.notnull(x) and x >= chatgpt_launch else "pre-ChatGPT")
+    return df
