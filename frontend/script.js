@@ -149,7 +149,7 @@ const contentData = {
     "editorAnalysis": {
         title: "Wikipedia Editor Analysis (2001–2026)",
         subtitle: "Community health trends, growth rates, and seasonal patterns",
-                        html: `
+        html: `
             <div class="dashboard-container">
                 <div class='tableauPlaceholder' id='vizEditorAnalysis' style='position: relative'>
                     <noscript>
@@ -192,58 +192,58 @@ const contentData = {
             </div>
             <div class="footer">Interactive dashboard powered by Tableau Public</div>
         `,
-                            callback: () => {
-                                var divElement = document.getElementById('vizEditorAnalysis');
-                                var vizElement = divElement.getElementsByTagName('object')[0];
+        callback: () => {
+            var divElement = document.getElementById('vizEditorAnalysis');
+            var vizElement = divElement.getElementsByTagName('object')[0];
 
-                                if (divElement.offsetWidth > 800) {
-                                    vizElement.style.width = '100%';
-                                    vizElement.style.height = (divElement.offsetWidth * 0.75) + 'px';
-                                } else if (divElement.offsetWidth > 500) {
-                                    vizElement.style.width = '100%';
-                                    vizElement.style.height = (divElement.offsetWidth * 0.75) + 'px';
-                                } else {
-                                    vizElement.style.width = '100%';
-                                    vizElement.style.height = '1400px';
-                                }
+            if (divElement.offsetWidth > 800) {
+                vizElement.style.width = '100%';
+                vizElement.style.height = (divElement.offsetWidth * 0.75) + 'px';
+            } else if (divElement.offsetWidth > 500) {
+                vizElement.style.width = '100%';
+                vizElement.style.height = (divElement.offsetWidth * 0.75) + 'px';
+            } else {
+                vizElement.style.width = '100%';
+                vizElement.style.height = '1400px';
+            }
 
-                                var scriptElement = document.createElement('script');
-                                scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
-                                vizElement.parentNode.insertBefore(scriptElement, vizElement);
-                            }
-            },
+            var scriptElement = document.createElement('script');
+            scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
+            vizElement.parentNode.insertBefore(scriptElement, vizElement);
+        }
+    },
 
-        };
+};
 
-        function renderContent(key) {
-            const data = contentData[key];
-const header = document.querySelector('header');
-const container = document.getElementById('main-container');
+function renderContent(key) {
+    const data = contentData[key];
+    const header = document.querySelector('header');
+    const container = document.getElementById('main-container');
 
-// Update Header
-header.innerHTML = `
+    // Update Header
+    header.innerHTML = `
         <h1>${data.title}</h1>
         <div class="subtitle">${data.subtitle}</div>
     `;
 
-// Update Content
-container.innerHTML = data.html;
+    // Update Content
+    container.innerHTML = data.html;
 
-// Run Callback if exists
-if (data.callback) {
-    data.callback();
-}
-
-// Update Sidebar Active State
-document.querySelectorAll('.menu-item').forEach(item => {
-    item.classList.remove('active');
-    if (item.getAttribute('data-tab') === key) {
-        item.classList.add('active');
+    // Run Callback if exists
+    if (data.callback) {
+        data.callback();
     }
-});
 
-// Scroll to top
-window.scrollTo(0, 0);
+    // Update Sidebar Active State
+    document.querySelectorAll('.menu-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.getAttribute('data-tab') === key) {
+            item.classList.add('active');
+        }
+    });
+
+    // Scroll to top
+    window.scrollTo(0, 0);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
