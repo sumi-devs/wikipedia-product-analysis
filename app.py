@@ -1,19 +1,17 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import os
 import json
 
 # Set page config
 st.set_page_config(
-    page_title="Wikipedia Product Health Dashboard",
-    page_icon="📊",
+    page_title="Wikipedia Analysis Dashboard",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for premium look
+# Custom CSS
 st.markdown("""
     <style>
     .main {
@@ -28,198 +26,130 @@ st.markdown("""
     h1, h2, h3 {
         color: #1a1a1a;
     }
-    .campaign-tag {
-        background-color: #e9ecef;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 0.8em;
-        margin-right: 5px;
-    }
     </style>
     """, unsafe_allow_html=True)
 
-# Data Loading Functions
-@st.cache_data
-def load_pageview_data():
-    file_path = "data/processed/en_wiki_pageviews_yearly.csv"
-    if os.path.exists(file_path):
-        df = pd.read_csv(file_path)
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        return df
-    return None
-
-@st.cache_data
-def load_twitter_data():
-    file_path = "data/processed/twitter_processed/twitter_with_topics.csv"
-    if os.path.exists(file_path):
-        df = pd.read_csv(file_path)
-        df['date'] = pd.to_datetime(df['date'])
-        return df
-    return None
-
-@st.cache_data
-def load_reddit_data():
-    file_path = "data/processed/reddit_processed/reddit_with_topics.csv"
-    if os.path.exists(file_path):
-        df = pd.read_csv(file_path)
-        df['date'] = pd.to_datetime(df['date'])
-        return df
-    return None
-
-@st.cache_data
-def load_campaign_dates():
-    file_path = "config/campaign_dates.json"
-    if os.path.exists(file_path):
-        with open(file_path, 'r') as f:
-            return json.load(f)
-    return None
-
-# Sidebar
-st.sidebar.title("Wikipedia Analysis")
-st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Wikipedia-logo-v2.svg/1200px-Wikipedia-logo-v2.svg.png", width=100)
-st.sidebar.markdown("---")
-page = st.sidebar.selectbox("Choose a Section", ["Overview", "Traffic Analysis", "Social Sentiment", "Topic Modeling", "AI Impact Analysis"])
-
-# Load Data
-pageviews_df = load_pageview_data()
-twitter_df = load_twitter_data()
-reddit_df = load_reddit_data()
-campaign_dates = load_campaign_dates()
-
-# --- Overview Page ---
-if page == "Overview":
-    st.title("🌐 Wikipedia Product Health (2015-2025)")
-    st.markdown("""
-    This dashboard evaluates the development and public perception of Wikipedia over the last decade.
-    Explore traffic trends, social signals from X and Reddit, and the impact of AI.
-    """)
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    if pageviews_df is not None:
-        latest_views = pageviews_df.iloc[-1]['views']
-        prev_views = pageviews_df.iloc[-2]['views']
-        delta = ((latest_views - prev_views) / prev_views) * 100
-        col1.metric("Yearly Pageviews", f"{latest_views:,.0f}", f"{delta:.2f}%")
-        
-    if twitter_df is not None:
-        col2.metric("X (Twitter) Mentions", f"{len(twitter_df):,}")
-        col3.metric("Avg X Sentiment", f"{twitter_df['vader_compound'].mean():.2f}")
-
-    if reddit_df is not None:
-        col4.metric("Reddit Discussions", f"{len(reddit_df):,}")
-
-    st.markdown("---")
-    
-    if campaign_dates:
-        st.subheader("🗓️ Major Campaign Calendar")
-        years = sorted(campaign_dates['fundraising'].keys())
-        selected_year = st.selectbox("Select Year to view campaign dates", years, index=len(years)-2)
-        
-        c1, c2, c3, c4 = st.columns(4)
-        c1.warning(f"Fundraising: {campaign_dates['fundraising'][selected_year]}")
-        c2.success(f"Wiki Loves Monuments: {campaign_dates['wiki_loves_monuments'][selected_year]}")
-        c3.info(f"Asian Month: {campaign_dates['wikipedia_asian_month'][selected_year]}")
-        c4.error(f"Wiki Loves Earth: {campaign_dates['wiki_loves_earth'][selected_year]}")
-
-# --- Traffic Analysis Page ---
-elif page == "Traffic Analysis":
-    st.title("📈 Traffic & Engagement Analysis")
-    
-    if pageviews_df is not None:
-        st.subheader("Yearly English Wikipedia Pageviews")
-        fig = px.line(pageviews_df, x='timestamp', y='views', 
-                     labels={'views': 'Total Views', 'timestamp': 'Year'},
-                     markers=True, line_shape='spline',
-                     template="plotly_white")
-        fig.update_traces(line_color='#3c3c3c', line_width=3)
-        st.plotly_chart(fig, use_container_width=True)
-        
-        with st.expander("Show Raw Traffic Data"):
-            st.dataframe(pageviews_df)
-    else:
-        st.error("Pageview data file not found.")
-
-# --- Social Sentiment Page ---
-elif page == "Social Sentiment":
-    st.title("🎭 Multi-Platform Sentiment")
-    
-    tab1, tab2 = st.tabs(["X (Twitter)", "Reddit"])
-    
-    with tab1:
-        if twitter_df is not None:
-            st.subheader("X Sentiment Distribution")
-            sentiment_counts = twitter_df['vader_label'].value_counts()
-            fig = px.pie(values=sentiment_counts.values, names=sentiment_counts.index, hole=0.4,
-                        color_discrete_sequence=px.colors.qualitative.Pastel)
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("Twitter data unavailable.")
-
-    with tab2:
-        if reddit_df is not None:
-            st.subheader("Reddit Sentiment Breakdown")
-            # Using Roberta labels if available
-            reddit_label_col = 'roberta_label' if 'roberta_label' in reddit_df.columns else 'vader_label'
-            fig = px.histogram(reddit_df, x=reddit_label_col, color=reddit_label_col,
-                             template="plotly_white")
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("Reddit data unavailable.")
-
-# --- Topic Modeling Page ---
-elif page == "Topic Modeling":
-    st.title("🧠 Public Mindshare: Emerging Topics")
-    
-    source = st.radio("Select Source", ["X (Twitter)", "Reddit"], horizontal=True)
-    df = twitter_df if source == "X (Twitter)" else reddit_df
-    
-    if df is not None:
-        topic_counts = df['dominant_topic'].value_counts().reset_index()
-        topic_counts.columns = ['Topic', 'Count']
-        
-        fig = px.bar(topic_counts, x='Topic', y='Count', 
-                    color='Count', color_continuous_scale='Blues')
-        st.plotly_chart(fig, use_container_width=True)
-        
-        st.info("**Topic Contexts**: Analysis reveals shifts from technical discussions (Topic 0-2) to socio-political impacts and AI concerns (Topic 4-7) in later years.")
-
-# --- AI Impact Analysis Page ---
-elif page == "AI Impact Analysis":
-    st.title("🤖 The ChatGPT Inflection Point")
-    
-    if reddit_df is not None and 'period' in reddit_df.columns:
-        st.markdown("Comparing public discourse **before** and **after** the rise of Generative AI.")
-        
-        compare_metric = st.selectbox("Metric to Compare", ["Sentiment (VADER)", "Engagement (Score)", "Comment Volume"])
-        
-        if compare_metric == "Sentiment (VADER)":
-            fig = px.box(reddit_df, x='period', y='vader_compound', color='period',
-                        title="Sentiment Shifts: Pre vs Post ChatGPT",
-                        labels={'vader_compound': 'Sentiment Score'},
-                        template="plotly_white")
-        elif compare_metric == "Engagement (Score)":
-            fig = px.violin(reddit_df, x='period', y='score', color='period', box=True,
-                           title="Engagement Trends: Pre vs Post ChatGPT",
-                           template="plotly_white")
-        else:
-            fig = px.histogram(reddit_df, x='period', color='period',
-                               title="Discussion Volume: Pre vs Post ChatGPT")
+# Helper: Display Image Gallery
+def display_report_gallery(folder_path, section_title):
+    if os.path.exists(folder_path):
+        st.subheader(section_title)
+        images = [f for f in os.listdir(folder_path) if f.endswith(('.png', '.jpg', '.jpeg'))]
+        if not images:
+            st.write("No report images found in this section.")
+            return
             
+        cols = st.columns(2)
+        for idx, img_name in enumerate(images):
+            with cols[idx % 2]:
+                st.image(os.path.join(folder_path, img_name), 
+                         caption=img_name.replace("_", " ").replace(".png", "").title(),
+                         use_container_width=True)
+    else:
+        st.warning(f"Report folder not found: {folder_path}")
+
+# Data Loading
+@st.cache_data
+def load_csv(path):
+    if os.path.exists(path):
+        return pd.read_csv(path)
+    return None
+
+# Sidebar Navigation
+st.sidebar.title("Wikipedia Analysis")
+st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Wikipedia-logo-v2.svg/1200px-Wikipedia-logo-v2.svg.png", width=80)
+st.sidebar.markdown("---")
+page = st.sidebar.radio("Navigation", 
+                        ["Pageview Analysis", "Editor Reports", "Top Articles", "Reddit Analysis", "Twitter Analysis"])
+
+# --- Page 1: Pageview Analysis ---
+if page == "Pageview Analysis":
+    st.title("Pageview Analysis")
+    
+    # Interactive Trends
+    df_yearly = load_csv("data/processed/en_wiki_pageviews_yearly.csv")
+    if df_yearly is not None:
+        st.subheader("Yearly Traffic Trends")
+        fig = px.line(df_yearly, x='timestamp', y='views', markers=True, template="plotly_white")
+        fig.update_traces(line_color='#333')
         st.plotly_chart(fig, use_container_width=True)
         
-        st.write("""
-        **Observations**: 
-        - Post-ChatGPT discussions show higher volatility in sentiment.
-        - Public concern regarding Wikipedia's 'accuracy' vs 'AI convenience' has spiked since 2023.
-        """)
-    else:
-        st.error("Required longitudinal data (Pre/Post labels) not found in Reddit dataset.")
+    df_ai = load_csv("data/processed/pageviews/ai_article_pageviews.csv")
+    if df_ai is not None:
+        st.subheader("AI Article Traffic Comparison")
+        fig_ai = px.line(df_ai, x='timestamp', y='views', color='article', template="plotly_white")
+        st.plotly_chart(fig_ai, use_container_width=True)
 
-# Footer
-st.markdown("---")
-st.caption("Wikipedia Product Health Analysis | Developed for Capstone Project 2026")
+    # Gallery
+    display_report_gallery("reports/pageviews_reports", "Detailed Traffic Reports")
 
-# Footer
-st.markdown("---")
-st.caption("Wikipedia Product Health Analysis | Developed for Capstone Project 2026")
+# --- Page 2: Editor Reports ---
+elif page == "Editor Reports":
+    st.title("Editor Reports")
+    st.markdown("Analysis of Wikipedia's community health and editor contribution patterns.")
+    display_report_gallery("reports/editor_reports", "Contribution & Growth Patterns")
+
+# --- Page 3: Top Articles ---
+elif page == "Top Articles":
+    st.title("Top Articles")
+    
+    df_top = load_csv("data/processed/top_articles/top_articles_2024_clean.csv")
+    if df_top is not None:
+        st.subheader("Trending Articles 2024")
+        selected_article = st.selectbox("Select Article to Track", df_top['article'].unique()[:20])
+        art_df = df_top[df_top['article'] == selected_article]
+        fig_top = px.area(art_df, x='date', y='views', title=f"Views for {selected_article}", template="plotly_white")
+        st.plotly_chart(fig_top, use_container_width=True)
+
+    display_report_gallery("reports/top_articles", "Attention & Spike Analysis")
+
+# --- Page 4: Reddit Analysis ---
+elif page == "Reddit Analysis":
+    st.title("Reddit Analysis")
+    
+    # Detailed Interactive Charts
+    st.subheader("Discussion Dynamics")
+    df_reddit_sent = load_csv("data/processed/reddit_processed/reddit_with_topics.csv")
+    if df_reddit_sent is not None:
+        # Fallback for missing labels
+        if 'vader_label' not in df_reddit_sent.columns and 'vader_compound' in df_reddit_sent.columns:
+            df_reddit_sent['vader_label'] = df_reddit_sent['vader_compound'].apply(lambda x: 'Positive' if x > 0.05 else ('Negative' if x < -0.05 else 'Neutral'))
+        
+        target_label = 'roberta_label' if 'roberta_label' in df_reddit_sent.columns else 'vader_label'
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if target_label in df_reddit_sent.columns:
+                fig_sent = px.histogram(df_reddit_sent, x=target_label, title=f"Sentiment Distribution ({target_label.split('_')[0].title()})", template="plotly_white")
+                st.plotly_chart(fig_sent, use_container_width=True)
+        with col2:
+            if 'dominant_topic' in df_reddit_sent.columns:
+                fig_topic = px.pie(df_reddit_sent, names='dominant_topic', title="Dominant Topics share", template="plotly_white")
+                st.plotly_chart(fig_topic, use_container_width=True)
+
+    # Gallery
+    display_report_gallery("reports/reddit_reports", "Community Discussions & Sentiment Trends")
+
+# --- Page 5: Twitter Analysis ---
+elif page == "Twitter Analysis":
+    st.title("Twitter Analysis")
+    
+    st.subheader("Social Engagement Patterns")
+    df_twitter = load_csv("data/processed/twitter_processed/twitter_with_topics.csv")
+    if df_twitter is not None:
+        # Fallback for missing labels
+        if 'vader_label' not in df_twitter.columns and 'vader_compound' in df_twitter.columns:
+            df_twitter['vader_label'] = df_twitter['vader_compound'].apply(lambda x: 'Positive' if x > 0.05 else ('Negative' if x < -0.05 else 'Neutral'))
+            
+        col1, col2 = st.columns(2)
+        with col1:
+            if 'vader_label' in df_twitter.columns:
+                fig_tw_sent = px.box(df_twitter, x='vader_label', y='vader_compound', title="Sentiment Consistency", template="plotly_white")
+                st.plotly_chart(fig_tw_sent, use_container_width=True)
+        with col2:
+            if 'vader_compound' in df_twitter.columns and 'total_engagement' in df_twitter.columns:
+                fig_tw_eng = px.scatter(df_twitter, x='vader_compound', y='total_engagement', hover_data=['text'] if 'text' in df_twitter.columns else None, 
+                                       title="Sentiment vs Engagement", template="plotly_white")
+                st.plotly_chart(fig_tw_eng, use_container_width=True)
+
+    # Gallery
+    display_report_gallery("reports/twitter_reports", "Engagement, Topics, and Wordclouds")
